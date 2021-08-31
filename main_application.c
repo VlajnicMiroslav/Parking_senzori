@@ -329,7 +329,6 @@ void main_demo(void)
 
 void SerialSend_Task(void* pvParameters)
 {
-	//uint8_t t_point = 0;
 	uint8_t ispis_niza[60] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 							   0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 							   0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -342,13 +341,13 @@ void SerialSend_Task(void* pvParameters)
 
 		xSemaphoreTake(TBE_BinarySemaphore_2, portMAX_DELAY);// ceka na serijski prijemni interapt
 
-		xQueueReceive(kanal_2_ispis_rijeci, &ispis_niza, pdMS_TO_TICKS(10)); //prijem miza iz obrade podataka, brzina ispisivanja jednog karaktera 10ms
+		xQueueReceive(kanal_2_ispis_rijeci, &ispis_niza, pdMS_TO_TICKS(10)); //prijem niza iz obrade podataka, brzina ispisivanja jednog karaktera 10ms
 		xQueueReceive(kanal_2_ispis_duzine, &duzina_ispis_niza, pdMS_TO_TICKS(10)); //prijem duzine niza iz obrade podataka, brzina ispisivanja jednog karaktera 10ms
 
 		if (t_point < duzina_ispis_niza) //dok nije ispisan posljednji karakter salji slovo po slovo 
 			send_serial_character(COM_CH2, ispis_niza[t_point++]);//ucitava primljeni karakter u promenjivu cc
 
-		else { //kada se ispise posljednji karakter, vrati brojac na nulu i predaj semafor da se mutex zatvori
+		else { //kada se ispise posljednji karakter, vrati brojac na nulu
 			t_point = 0;
 			duzina_ispis_niza = 0;
 		}
@@ -357,7 +356,6 @@ void SerialSend_Task(void* pvParameters)
 
 void SerialReceive_Task(void* pvParameters)
 {
-	//uint8_t r_point = 0;
 	uint8_t cc = 0;
 	uint8_t r_buffer[6] = { 0, 0, 0, 0, 0, 0 };
 	uint8_t duzina_primljene_rijeci = 0;
@@ -377,7 +375,6 @@ void SerialReceive_Task(void* pvParameters)
 		else if (r_point < R_BUF_SIZE)// pamti karaktere prije CR
 		{
 			r_buffer[r_point++] = cc;
-			//printf("primio karakter: %u\n", (unsigned)cc);// prikazuje primljeni karakter u cmd prompt
 		}
 
 	}
@@ -429,15 +426,11 @@ void Obrada_task(void* pvParameters)
 			}
 			else if (ls_buffer[0] >= 50 && ls_buffer[0] < 100)
 			{
-				//ispis_niza[duzina_ispis_niza++] = (unsigned)ls_buffer[0] / 10 + 48;
-				//ispis_niza[duzina_ispis_niza++] = (unsigned)ls_buffer[0] % 10 + 48;
 				strcat(ispis_niza, "50%-100%\n");
 				duzina_ispis_niza += sizeof("50%-100%\n") - 1;
 			}
 			else if (ls_buffer[0] > 20 && ls_buffer[0] < 50)
 			{
-				//ispis_niza[duzina_ispis_niza++] = (unsigned)ls_buffer[0] / 10 + 48;
-				//ispis_niza[duzina_ispis_niza++] = (unsigned)ls_buffer[0] % 10 + 48;
 				strcat(ispis_niza, "  0%-50%\n");
 				duzina_ispis_niza += sizeof("  0%-50%\n") - 1;
 			}
@@ -458,15 +451,11 @@ void Obrada_task(void* pvParameters)
 			}
 			else if (ds_buffer[0] >= 50 && ds_buffer[0] < 100)
 			{
-				//ispis_niza[duzina_ispis_niza++] = (unsigned)ds_buffer[0] / 10;
-				//ispis_niza[duzina_ispis_niza++] = (unsigned)ds_buffer[0] % 10;
 				strcat(ispis_niza, "50%-100%\n");
 				duzina_ispis_niza += sizeof("50%-100%\n") - 1;
 			}
 			else if (ds_buffer[0] > 20 && ds_buffer[0] < 50)
 			{
-				//ispis_niza[duzina_ispis_niza++] = (unsigned)ds_buffer[0] / 10 + 48;
-				//ispis_niza[duzina_ispis_niza++] = (unsigned)ds_buffer[0] % 10 + 48;
 				strcat(ispis_niza, "  0%-50%\n");
 				duzina_ispis_niza += sizeof("  0%-50%\n") - 1;
 			}
@@ -507,14 +496,11 @@ void Obrada_task(void* pvParameters)
 void LED_bar_task(void* pvParameters) //ocitati prekidace i reci da li je ukljuceno ili iskljuceno
 {
 	uint8_t d;
-	uint8_t ukljucen;
 
 	while (1)
 	{
 		xSemaphoreTake(LED_INT_BinarySemaphore, portMAX_DELAY);
-		xQueueReceive(stanje, &ukljucen, pdMS_TO_TICKS(10));//prima podatak o komandnoj rijeci od taska za obradu podataka
 		
-		//printf("Lijevi senzor: %u\n", ls_buffer[0]);// prikazuje primljeni karakter u cmd prompt
 		get_LED_BAR(0, &d); //ocitaj stanje prvog stubca, prve ledovke led bara
 		
 		xQueueSend(prekidac, &d, 0U);//posalji stanje prekidaca tasku za obradu podataka
@@ -524,9 +510,7 @@ void LED_bar_task(void* pvParameters) //ocitati prekidace i reci da li je ukljuc
 void Lijevi_senzor_task(void* pvParameters)//task za lijevi senzor, kanal 0
 {
 	uint8_t ll = 0;
-	uint8_t ls_point = 0;
 	uint8_t ls_buffer[2] = { 0, 0 };
-	uint8_t duzina = 0;
 	
 
 	while (1)
@@ -537,7 +521,6 @@ void Lijevi_senzor_task(void* pvParameters)//task za lijevi senzor, kanal 0
 			
 			if (ll == 0x0d)
 			{
-				duzina = ls_point;
 				ls_point = 0;
 				xQueueSend(lijevi_senzor_obrada, &ls_buffer, 0U);//salji podatak sa lijevog senzora tasku za obradi podataka
 				xQueueSend(lijevi_senzor_seg7, &ls_buffer, 0U);//salji podatak sa lijevog senzora tasku seg7 (displej)
@@ -553,9 +536,7 @@ void Lijevi_senzor_task(void* pvParameters)//task za lijevi senzor, kanal 0
 void Desni_senzor_task(void* pvParameters) //ocitati prekidace i reci da li je ukljuceno ili iskljuceno
 {
 	uint8_t dd = 0;
-	uint8_t ds_point = 0;
 	uint8_t ds_buffer[2] = { 0, 0 };
-	uint8_t duzina = 0;
 
 	while (1)
 	{
@@ -566,7 +547,6 @@ void Desni_senzor_task(void* pvParameters) //ocitati prekidace i reci da li je u
 
 			if (dd == 0x0d)
 			{
-				duzina = ds_point;
 				ds_point = 0;
 				xQueueSend(desni_senzor_obrada, &ds_buffer, 0U);//salji podatak sa desnog senzora tasku za obradu podataka
 				xQueueSend(desni_senzor_seg7, &ds_buffer, 0U);//salji podatak sa desnog senzora tasku seg7 (displej)
@@ -608,8 +588,6 @@ void Seg7_task(void* pvParameters)
 				set_7seg_digit(hexnum[(uint8_t)0]);
 				select_7seg_digit(2);
 				set_7seg_digit(hexnum[(uint8_t)0]);
-
-				//xQueueSend(blink_lijevi, &postotak_lijevi, 0U);//salji podatak za blinkanje diode [100%]
 			}
 
 			else if (ls_buffer[0] <= 99 && ls_buffer[0] >= 50)
@@ -622,8 +600,6 @@ void Seg7_task(void* pvParameters)
 				set_7seg_digit(hexnum[(uint8_t)ls_buffer[0] / 10]);
 				select_7seg_digit(2);
 				set_7seg_digit(hexnum[(uint8_t)ls_buffer[0] % 10]);
-
-				//xQueueSend(blink_lijevi, &postotak_lijevi, 0U);//salji podatak za blinkanje diode [50%-100%] - lijevi senzor
 			}
 
 			else if (ls_buffer[0] <= 49 && ls_buffer[0] > 20)
@@ -636,8 +612,6 @@ void Seg7_task(void* pvParameters)
 				set_7seg_digit(hexnum[(uint8_t)ls_buffer[0] / 10]);
 				select_7seg_digit(2);
 				set_7seg_digit(hexnum[(uint8_t)ls_buffer[0] % 10]);
-
-				//xQueueSend(blink_lijevi, &postotak_lijevi, 0U);//salji podatak za blinkanje diode [0%-50%] - lijevi senzor
 			}
 
 			else if (ls_buffer[0] <= 20)
@@ -650,8 +624,6 @@ void Seg7_task(void* pvParameters)
 				set_7seg_digit(hexnum[(uint8_t)2]);
 				select_7seg_digit(2);
 				set_7seg_digit(hexnum[(uint8_t)0]);
-
-				//xQueueSend(blink_lijevi, &postotak_lijevi, 0U);//salji podatak za blinkanje diode [0%] - lijevi senzor
 			}
 				
 
@@ -665,8 +637,6 @@ void Seg7_task(void* pvParameters)
 				set_7seg_digit(hexnum[(uint8_t)0]);
 				select_7seg_digit(6);
 				set_7seg_digit(hexnum[(uint8_t)0]);
-
-				//xQueueSend(blink_desni, &postotak_desni, 0U);//salji podatak za blinkanje diode [100%] - desni senzor
 			}
 
 			else if (ds_buffer[0] <= 99 && ds_buffer[0] >= 50)
@@ -679,8 +649,6 @@ void Seg7_task(void* pvParameters)
 				set_7seg_digit(hexnum[(uint8_t)ds_buffer[0] / 10]);
 				select_7seg_digit(6);
 				set_7seg_digit(hexnum[(uint8_t)ds_buffer[0] % 10]);
-
-				//xQueueSend(blink_desni, &postotak_desni, 0U);//salji podatak za blinkanje diode [50%-100%] - desni senzor
 			}
 
 			else if (ds_buffer[0] <= 49 && ds_buffer[0] > 20)
@@ -693,8 +661,6 @@ void Seg7_task(void* pvParameters)
 				set_7seg_digit(hexnum[(uint8_t)ds_buffer[0] / 10]);
 				select_7seg_digit(6);
 				set_7seg_digit(hexnum[(uint8_t)ds_buffer[0] % 10]);
-
-				//xQueueSend(blink_lijevi, &postotak_desni, 0U);//salji podatak za blinkanje diode [0%-50%] - desni senzor
 			}
 
 			else if (ds_buffer[0] <= 20)
@@ -707,8 +673,6 @@ void Seg7_task(void* pvParameters)
 				set_7seg_digit(hexnum[(uint8_t)2]);
 				select_7seg_digit(6);
 				set_7seg_digit(hexnum[(uint8_t)0]);
-
-				//xQueueSend(blink_desni, &postotak_desni, 0U);//salji podatak za blinkanje diode [0%] - desni senzor
 			}
 		}
 
@@ -729,9 +693,6 @@ void Seg7_task(void* pvParameters)
 			set_7seg_digit(hexnum[(uint8_t)0]);
 			select_7seg_digit(6);
 			set_7seg_digit(hexnum[(uint8_t)0]);
-
-			//xQueueSend(blink_lijevi, &postotak_lijevi, 0U);//salji podatak za gasenje svih dioda lijevog senzora
-			//xQueueSend(blink_desni, &postotak_desni, 0U);//salji podatak za gasenje svih dioda desnog senzora
 		}
 		xQueueSend(blink_lijevi_1, &postotak_lijevi, 0U);//salji podatak za gasenje svih dioda lijevog senzora
 		xQueueSend(blink_desni_1, &postotak_desni, 0U);//salji podatak za gasenje svih dioda desnog senzora
